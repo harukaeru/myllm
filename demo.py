@@ -50,15 +50,40 @@ def show_batch(network, x, t, start, n=10):
 
 iters_num = 2000
 batch_size = 100
-lr = 0.1
 train_size = x_train.shape[0]
 
+class SGD:
+  def __init__(self, lr=0.1):
+      self.lr = lr
+
+  def update(self, params, grads): 
+    for key in params.keys():
+        params[key] -= self.lr * grads[key]
+
+class Momentum:
+  def __init__(self, lr=0.01, momentum=0.9):
+    self.lr = lr
+    self.momentum = momentum
+    self.v = None
+    
+  def update(self, params, grads):
+    if self.v is None:
+      self.v = {}
+      for key, val in params.items():
+        self.v[key] = np.zeros_like(val)
+    
+    for key in params.keys():
+        self.v[key] = self.momentum * self.v[key] - self.lr * grads[key]
+        params[key] += self.v[key]
+
+
+
+optimizer = Momentum()
 for i in range(iters_num):
     idx = np.random.choice(train_size, batch_size)
     x_b, t_b = x_train[idx], t_train[idx]
-    grad = network.gradient(x_b, t_b)   # ← 先に gradient() の grads={} 抜けを修正しておくこと
-    for key in ('W1', 'b1', 'W2', 'b2'):
-        network.params[key] -= lr * grad[key]
+    grads = network.gradient(x_b, t_b)   # ← 先に gradient() の grads={} 抜けを修正しておくこと
+    optimizer.update(network.params, grads)
     print('accuracy:', network.accuracy(x_test, t_test))
 
 # ===== メインループ：10枚ずつ確認 =====
